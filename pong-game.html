@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pong Game</title>
+    <title>Timer Dashboard</title>
     <style>
         * {
             margin: 0;
@@ -18,13 +18,16 @@
             min-height: 100vh;
             background: linear-gradient(135deg, #1a1a2e, #16213e);
             font-family: 'Arial', sans-serif;
+            padding: 20px;
         }
 
-        .game-container {
+        .container {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 20px;
+            gap: 30px;
+            max-width: 1000px;
+            width: 100%;
         }
 
         h1 {
@@ -34,286 +37,387 @@
             letter-spacing: 2px;
         }
 
-        #gameCanvas {
-            background-color: #0f3460;
-            border: 3px solid #00ff88;
-            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
-            display: block;
-            cursor: none;
-        }
-
-        .scoreboard {
+        .controls {
             display: flex;
-            justify-content: space-around;
-            width: 400px;
-            background: rgba(0, 255, 136, 0.1);
-            padding: 15px;
-            border: 2px solid #00ff88;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+
+        button {
+            padding: 12px 30px;
+            font-size: 1em;
+            font-weight: bold;
+            border: none;
             border-radius: 5px;
-            margin-bottom: 10px;
-        }
-
-        .score-section {
-            text-align: center;
-            color: #00ff88;
-        }
-
-        .score-label {
-            font-size: 0.9em;
-            margin-bottom: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
-        .score-value {
-            font-size: 2em;
-            font-weight: bold;
-            text-shadow: 0 0 10px #00ff88;
+        .btn-start {
+            background: linear-gradient(135deg, #00ff88, #00cc6f);
+            color: #000;
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
         }
 
-        .instructions {
-            color: #00ff88;
+        .btn-start:hover {
+            box-shadow: 0 0 25px rgba(0, 255, 136, 0.8);
+            transform: scale(1.05);
+        }
+
+        .btn-start.active {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 107, 107, 0.5);
+        }
+
+        .btn-start.active:hover {
+            box-shadow: 0 0 25px rgba(255, 107, 107, 0.8);
+        }
+
+        .btn-reset {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a5a);
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 107, 107, 0.5);
+        }
+
+        .btn-reset:hover {
+            box-shadow: 0 0 25px rgba(255, 107, 107, 0.8);
+            transform: scale(1.05);
+        }
+
+        .timers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .timer-card {
+            background: rgba(0, 255, 136, 0.1);
+            border: 2px solid #00ff88;
+            border-radius: 10px;
+            padding: 20px;
             text-align: center;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .timer-card:hover {
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.6);
+            transform: translateY(-5px);
+        }
+
+        .timer-card.running {
+            background: rgba(255, 107, 107, 0.1);
+            border-color: #ff6b6b;
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.3);
+        }
+
+        .timer-card.finished {
+            background: rgba(255, 215, 0, 0.1);
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+
+        .timer-number {
+            color: #00ff88;
             font-size: 0.9em;
-            max-width: 500px;
-            line-height: 1.6;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
         }
 
-        .instructions p {
-            margin: 5px 0;
-        }
-
-        .key-binding {
+        .timer-display {
+            color: #00ff88;
+            font-size: 2.5em;
             font-weight: bold;
-            color: #ffff00;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 10px #00ff88;
+            margin: 15px 0;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .timer-card.running .timer-display {
+            color: #ff6b6b;
+            text-shadow: 0 0 10px #ff6b6b;
+        }
+
+        .timer-card.finished .timer-display {
+            color: #ffd700;
+            text-shadow: 0 0 10px #ffd700;
+        }
+
+        .timer-input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+            border-radius: 5px;
+            font-size: 0.9em;
+            text-align: center;
+        }
+
+        .timer-input:focus {
+            outline: none;
+            border-color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        .timer-input::placeholder {
+            color: rgba(0, 255, 136, 0.5);
+        }
+
+        .timer-controls {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .timer-btn {
+            flex: 1;
+            padding: 8px;
+            font-size: 0.8em;
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            border: 1px solid #00ff88;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .timer-btn:hover {
+            background: rgba(0, 255, 136, 0.4);
+        }
+
+        .timer-btn.running {
+            background: rgba(255, 107, 107, 0.3);
+            color: #ff6b6b;
+            border-color: #ff6b6b;
+        }
+
+        .timer-btn.running:hover {
+            background: rgba(255, 107, 107, 0.5);
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #666;
+            margin: 10px auto;
+        }
+
+        .status-indicator.running {
+            background: #ff6b6b;
+            animation: pulse 1s infinite;
+        }
+
+        .status-indicator.finished {
+            background: #ffd700;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="game-container">
-        <h1>🎮 PONG 🎮</h1>
-        <div class="scoreboard">
-            <div class="score-section">
-                <div class="score-label">Player</div>
-                <div class="score-value" id="playerScore">0</div>
-            </div>
-            <div class="score-section">
-                <div class="score-label">Computer</div>
-                <div class="score-value" id="computerScore">0</div>
-            </div>
+    <div class="container">
+        <h1>⏱️ Timer Dashboard</h1>
+        
+        <div class="controls">
+            <button class="btn-start" id="startAllBtn">Start All</button>
+            <button class="btn-reset" id="resetAllBtn">Reset All</button>
         </div>
-        <canvas id="gameCanvas" width="800" height="400"></canvas>
-        <div class="instructions">
-            <p><span class="key-binding">↑ ↓ Keys</span> or <span class="key-binding">Mouse Move</span> - Control Left Paddle</p>
-            <p>First to 11 points wins! Computer controls the right paddle.</p>
-        </div>
+
+        <div class="timers-grid" id="timersGrid"></div>
     </div>
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
+        const TIMER_COUNT = 10;
+        const timers = [];
+        let allRunning = false;
 
-        // Game Objects
-        const paddle = {
-            width: 10,
-            height: 80,
-            speed: 6,
-            x: 20,
-            y: canvas.height / 2 - 40
-        };
-
-        const computerPaddle = {
-            width: 10,
-            height: 80,
-            speed: 5,
-            x: canvas.width - 30,
-            y: canvas.height / 2 - 40
-        };
-
-        const ball = {
-            x: canvas.width / 2,
-            y: canvas.height / 2,
-            radius: 8,
-            speedX: 5,
-            speedY: 5,
-            maxSpeed: 8
-        };
-
-        let playerScore = 0;
-        let computerScore = 0;
-
-        // Input handling
-        const keys = {};
-        let mouseY = canvas.height / 2;
-
-        document.addEventListener('keydown', (e) => {
-            keys[e.key] = true;
-        });
-
-        document.addEventListener('keyup', (e) => {
-            keys[e.key] = false;
-        });
-
-        document.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            mouseY = e.clientY - rect.top;
-        });
-
-        // Update Functions
-        function updatePaddle() {
-            // Player paddle - responds to both mouse and arrow keys
-            if (keys['ArrowUp'] || keys['w'] || keys['W']) {
-                paddle.y = Math.max(0, paddle.y - paddle.speed);
-            }
-            if (keys['ArrowDown'] || keys['s'] || keys['S']) {
-                paddle.y = Math.min(canvas.height - paddle.height, paddle.y + paddle.speed);
+        class Timer {
+            constructor(id) {
+                this.id = id;
+                this.duration = 60; // Default 60 seconds
+                this.remaining = 60;
+                this.isRunning = false;
+                this.intervalId = null;
+                this.element = null;
+                this.createElement();
             }
 
-            // Mouse control
-            const mouseDiff = mouseY - (paddle.y + paddle.height / 2);
-            if (Math.abs(mouseDiff) > 5) {
-                paddle.y += mouseDiff * 0.1;
-                paddle.y = Math.max(0, Math.min(canvas.height - paddle.height, paddle.y));
+            createElement() {
+                const card = document.createElement('div');
+                card.className = 'timer-card';
+                card.innerHTML = `
+                    <div class="timer-number">Timer ${this.id + 1}</div>
+                    <input type="number" class="timer-input" placeholder="Seconds" value="60" min="1">
+                    <div class="timer-display">01:00</div>
+                    <div class="status-indicator"></div>
+                    <div class="timer-controls">
+                        <button class="timer-btn" data-action="start">Start</button>
+                        <button class="timer-btn" data-action="reset">Reset</button>
+                    </div>
+                `;
+
+                card.querySelector('input').addEventListener('change', (e) => {
+                    if (!this.isRunning) {
+                        this.duration = parseInt(e.target.value) || 60;
+                        this.remaining = this.duration;
+                        this.updateDisplay();
+                    }
+                });
+
+                const startBtn = card.querySelector('[data-action="start"]');
+                const resetBtn = card.querySelector('[data-action="reset"]');
+
+                startBtn.addEventListener('click', () => this.toggleStart());
+                resetBtn.addEventListener('click', () => this.reset());
+
+                this.element = card;
+                return card;
+            }
+
+            toggleStart() {
+                if (this.isRunning) {
+                    this.stop();
+                } else {
+                    this.start();
+                }
+                updateStartAllButton();
+            }
+
+            start() {
+                if (this.isRunning || this.remaining <= 0) return;
+                this.isRunning = true;
+                this.updateDisplay();
+                this.updateUI();
+
+                this.intervalId = setInterval(() => {
+                    this.remaining--;
+                    this.updateDisplay();
+
+                    if (this.remaining <= 0) {
+                        this.stop();
+                    }
+                }, 1000);
+            }
+
+            stop() {
+                this.isRunning = false;
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                    this.intervalId = null;
+                }
+                this.updateUI();
+            }
+
+            reset() {
+                this.stop();
+                this.remaining = this.duration;
+                this.updateDisplay();
+                this.updateUI();
+            }
+
+            updateDisplay() {
+                const minutes = Math.floor(this.remaining / 60);
+                const seconds = this.remaining % 60;
+                const timeString = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                this.element.querySelector('.timer-display').textContent = timeString;
+            }
+
+            updateUI() {
+                const startBtn = this.element.querySelector('[data-action="start"]');
+                const input = this.element.querySelector('input');
+                const indicator = this.element.querySelector('.status-indicator');
+
+                if (this.isRunning) {
+                    this.element.classList.add('running');
+                    this.element.classList.remove('finished');
+                    startBtn.textContent = 'Stop';
+                    startBtn.classList.add('running');
+                    input.disabled = true;
+                    indicator.classList.add('running');
+                } else if (this.remaining <= 0) {
+                    this.element.classList.remove('running');
+                    this.element.classList.add('finished');
+                    startBtn.textContent = 'Start';
+                    startBtn.classList.remove('running');
+                    input.disabled = true;
+                    indicator.classList.remove('running');
+                    indicator.classList.add('finished');
+                } else {
+                    this.element.classList.remove('running', 'finished');
+                    startBtn.textContent = 'Start';
+                    startBtn.classList.remove('running');
+                    input.disabled = false;
+                    indicator.classList.remove('running', 'finished');
+                }
             }
         }
 
-        function updateComputerPaddle() {
-            const computerCenter = computerPaddle.y + computerPaddle.height / 2;
-            const ballCenter = ball.y;
+        function initializeTimers() {
+            const grid = document.getElementById('timersGrid');
+            grid.innerHTML = '';
 
-            // AI logic with slight imperfection
-            const difficulty = 0.08;
-            if (computerCenter < ballCenter - 35) {
-                computerPaddle.y += computerPaddle.speed;
-            } else if (computerCenter > ballCenter + 35) {
-                computerPaddle.y -= computerPaddle.speed;
+            for (let i = 0; i < TIMER_COUNT; i++) {
+                const timer = new Timer(i);
+                timers.push(timer);
+                grid.appendChild(timer.element);
             }
-
-            // Keep paddle in bounds
-            computerPaddle.y = Math.max(0, Math.min(canvas.height - computerPaddle.height, computerPaddle.y));
         }
 
-        function updateBall() {
-            ball.x += ball.speedX;
-            ball.y += ball.speedY;
-
-            // Ball collision with top and bottom walls
-            if (ball.y - ball.radius < 0) {
-                ball.y = ball.radius;
-                ball.speedY = -ball.speedY;
+        function startAll() {
+            const allRunning = timers.some(t => t.isRunning);
+            if (allRunning) {
+                timers.forEach(t => t.stop());
+            } else {
+                timers.forEach(t => {
+                    if (t.remaining > 0 && !t.isRunning) {
+                        t.start();
+                    }
+                });
             }
-            if (ball.y + ball.radius > canvas.height) {
-                ball.y = canvas.height - ball.radius;
-                ball.speedY = -ball.speedY;
-            }
-
-            // Ball collision with left paddle
-            if (
-                ball.x - ball.radius < paddle.x + paddle.width &&
-                ball.y > paddle.y &&
-                ball.y < paddle.y + paddle.height
-            ) {
-                ball.x = paddle.x + paddle.width + ball.radius;
-                ball.speedX = -ball.speedX;
-
-                // Add spin based on where ball hits paddle
-                const hitPos = (ball.y - (paddle.y + paddle.height / 2)) / (paddle.height / 2);
-                ball.speedY = hitPos * ball.maxSpeed;
-                ball.speedX = Math.abs(ball.speedX);
-            }
-
-            // Ball collision with right paddle
-            if (
-                ball.x + ball.radius > computerPaddle.x &&
-                ball.y > computerPaddle.y &&
-                ball.y < computerPaddle.y + computerPaddle.height
-            ) {
-                ball.x = computerPaddle.x - ball.radius;
-                ball.speedX = -ball.speedX;
-
-                // Add spin based on where ball hits paddle
-                const hitPos = (ball.y - (computerPaddle.y + computerPaddle.height / 2)) / (computerPaddle.height / 2);
-                ball.speedY = hitPos * ball.maxSpeed;
-                ball.speedX = -Math.abs(ball.speedX);
-            }
-
-            // Ball goes out of bounds
-            if (ball.x < 0) {
-                computerScore++;
-                resetBall();
-            }
-            if (ball.x > canvas.width) {
-                playerScore++;
-                resetBall();
-            }
-
-            // Update score display
-            document.getElementById('playerScore').textContent = playerScore;
-            document.getElementById('computerScore').textContent = computerScore;
+            updateStartAllButton();
         }
 
-        function resetBall() {
-            ball.x = canvas.width / 2;
-            ball.y = canvas.height / 2;
-            ball.speedX = (Math.random() > 0.5 ? 1 : -1) * 5;
-            ball.speedY = (Math.random() - 0.5) * 5;
+        function resetAll() {
+            timers.forEach(t => t.reset());
+            updateStartAllButton();
         }
 
-        // Draw Functions
-        function drawRect(x, y, width, height, color) {
-            ctx.fillStyle = color;
-            ctx.fillRect(x, y, width, height);
+        function updateStartAllButton() {
+            const btn = document.getElementById('startAllBtn');
+            const anyRunning = timers.some(t => t.isRunning);
+            btn.textContent = anyRunning ? 'Stop All' : 'Start All';
+            btn.classList.toggle('active', anyRunning);
         }
 
-        function drawCircle(x, y, radius, color) {
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fill();
-        }
+        // Event listeners
+        document.getElementById('startAllBtn').addEventListener('click', startAll);
+        document.getElementById('resetAllBtn').addEventListener('click', resetAll);
 
-        function drawCenterLine() {
-            ctx.strokeStyle = 'rgba(0, 255, 136, 0.3)';
-            ctx.setLineDash([10, 10]);
-            ctx.beginPath();
-            ctx.moveTo(canvas.width / 2, 0);
-            ctx.lineTo(canvas.width / 2, canvas.height);
-            ctx.stroke();
-            ctx.setLineDash([]);
-        }
-
-        function draw() {
-            // Clear canvas
-            ctx.fillStyle = '#0f3460';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw center line
-            drawCenterLine();
-
-            // Draw paddles
-            drawRect(paddle.x, paddle.y, paddle.width, paddle.height, '#00ff88');
-            drawRect(computerPaddle.x, computerPaddle.y, computerPaddle.width, computerPaddle.height, '#00ff88');
-
-            // Draw ball
-            drawCircle(ball.x, ball.y, ball.radius, '#ffff00');
-
-            // Draw border
-            ctx.strokeStyle = '#00ff88';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(0, 0, canvas.width, canvas.height);
-        }
-
-        // Game Loop
-        function gameLoop() {
-            updatePaddle();
-            updateComputerPaddle();
-            updateBall();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-
-        // Start game
-        gameLoop();
+        // Initialize
+        initializeTimers();
     </script>
 </body>
 </html>
