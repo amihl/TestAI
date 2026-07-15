@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timer MTB</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0c120d;
+      --panel: #18221a;
+      --border: #3c4d3d;
+      --text: #f2f6ed;
+      --muted: #afbcad;
+      --lime: #c3f450;
+      --red: #f06f61;
+      --field: #101811;
+      --button: #344537;
+    }
+
+    body.light {
+      color-scheme: light;
+      --bg: #f2f6ef;
+      --panel: #fff;
+      --border: #c7d3c5;
+      --text: #162117;
+      --muted: #526654;
+      --lime: #739d1d;
+      --red: #c9473c;
+      --field: #f8fbf6;
+      --button: #e3ebe1;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-width: 320px;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, sans-serif;
+    }
+
+    .page { width: min(1120px, calc(100% - 2rem)); margin: auto; padding: 3rem 0; }
+    .eyebrow { margin: 0; color: var(--lime); font-size: .75rem; font-weight: 700; letter-spacing: .15em; }
+    h1 { margin: .3rem 0; font-size: clamp(3rem, 7vw, 5rem); }
+    .intro { color: var(--muted); }
+
+    .settings, .timer {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--panel);
+      box-shadow: 0 8px 24px rgba(10, 20, 11, .08);
+    }
+
+    .settings { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 1rem; margin: 2rem 0; padding: 1.2rem; }
+    .actions { display: flex; flex-wrap: wrap; gap: .6rem; }
+    .timer-grid { display: flex; flex-direction: column; gap: .6rem; }
+    label { display: grid; gap: .35rem; color: var(--muted); font-size: .78rem; font-weight: 700; }
+
+    input {
+      width: 100%;
+      min-height: 2.5rem;
+      padding: .45rem .65rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--field);
+      color: var(--text);
+      font: inherit;
+    }
+
+    #timer-count { width: 7rem; }
+
+    button {
+      min-height: 2.5rem;
+      padding: 0 .75rem;
+      border: 0;
+      border-radius: 8px;
+      background: var(--button);
+      color: var(--text);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:focus-visible, input:focus { outline: 2px solid var(--lime); outline-offset: 2px; }
+    .danger { background: var(--red); color: #fff; }
+
+    .timer { display: grid; grid-template-columns: minmax(400px, 1fr) 165px 190px; align-items: center; gap: 1rem; padding: 1rem; }
+    .timer.running { border-color: var(--lime); }
+    .rider-fields { display: grid; grid-template-columns: .6fr 1.4fr .8fr 1fr; gap: .6rem; }
+    .rider-fields input { min-height: 2.25rem; }
+    .timer-display { min-height: 0; padding: 0; border: 0; border-radius: 0; background: transparent; font: 500 clamp(1.5rem, 3vw, 2rem) monospace; letter-spacing: -.1em; }
+    .controls { display: flex; gap: .6rem; }
+    .start { flex: 1; background: var(--lime); color: #172000; }
+    .running .start { background: var(--red); color: #fff; }
+    .reset { width: 2.5rem; }
+    .theme-control { margin: 2rem 0; text-align: center; }
+    .theme-button { border: 1px solid var(--border); }
+
+    @media (max-width: 850px) {
+      .timer { grid-template-columns: 1fr 170px; }
+      .timer-display { grid-column: 1; }
+      .controls { grid-column: 2; }
+    }
+
+    @media (max-width: 620px) {
+      .page { width: min(100% - 1.25rem, 1120px); padding: 2rem 0; }
+      .timer, .rider-fields { grid-template-columns: 1fr; }
+      .timer-display, .controls { grid-column: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header>
+      <p class="eyebrow">MTB-RENNEN · ZEITNAHME</p>
+      <h1>Timer MTB</h1>
+      <p class="intro">Unabhängige Rennzeiten und Fahrerinformationen.</p>
+    </header>
+
+    <section class="settings">
+      <label>Anzahl Timer<input id="timer-count" type="number" min="1" max="50" value="10"></label>
+      <div class="actions">
+        <button id="reset-times" type="button">Alle Timer zurücksetzen</button>
+        <button id="reset-all" class="danger" type="button">Alles zurücksetzen</button>
+        <button id="export" type="button">Ergebnisse speichern</button>
+        <button id="import" type="button">Ergebnisse laden</button>
+        <input id="csv-file" type="file" accept=".csv,text/csv" hidden>
+      </div>
+    </section>
+
+    <section class="timer-grid" aria-label="Timer"></section>
+  </main>
+
+  <div class="theme-control"><button id="theme-toggle" class="theme-button" type="button"></button></div>
+
+  <template id="timer-template">
+    <article class="timer">
+      <div class="rider-fields">
+        <input class="number" inputmode="numeric" placeholder="Startnummer" aria-label="Startnummer">
+        <input class="name" placeholder="Name" aria-label="Name">
+        <input class="year" type="number" min="1900" max="2100" placeholder="Jahrgang" aria-label="Jahrgang">
+        <input class="age-class" placeholder="Altersklasse" aria-label="Altersklasse">
+      </div>
+      <input class="timer-display" value="00:00:00.0" inputmode="decimal" aria-label="Uhrzeit im Format Stunden Minuten Sekunden und Zehntelsekunden">
+      <div class="controls">
+        <button class="start" type="button">Start</button>
+        <button class="reset" type="button" aria-label="Timer zurücksetzen">↺</button>
+      </div>
+    </article>
+  </template>
+
+  <script>
+    const $ = (selector, root = document) => root.querySelector(selector);
+    const grid = $('.timer-grid');
+    const template = $('#timer-template');
+    const countInput = $('#timer-count');
+    const storageKey = 'timer-mtb-state';
+    const themeKey = 'timer-mtb-theme';
+    const statuses = new Set(['Bereit', 'Läuft', 'Pausiert']);
+    let timers = [];
+
+    const formatTime = milliseconds => {
+      const seconds = Math.floor(milliseconds / 1000);
+      const time = [Math.floor(seconds / 3600), Math.floor(seconds % 3600 / 60), seconds % 60]
+        .map(value => String(value).padStart(2, '0'))
+        .join(':');
+      return `${time}.${Math.floor(milliseconds / 100) % 10}`;
+    };
+
+    const parseTime = (value, allowWholeSeconds = false) => {
+      const match = value.trim().match(allowWholeSeconds
+        ? /^(\d{2,}):(\d{2}):(\d{2})(?:\.(\d))?$/
+        : /^(\d{2,}):(\d{2}):(\d{2})\.(\d)$/);
+      if (!match) return null;
+      const [, hours, minutes, seconds, tenths = '0'] = match;
+      if (Number(minutes) > 59 || Number(seconds) > 59) return null;
+      return (Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds)) * 1000 + Number(tenths) * 100;
+    };
+
+    const save = () => localStorage.setItem(storageKey, JSON.stringify({
+      count: timers.length,
+      timers: timers.map(timer => timer.state())
+    }));
+
+    const load = () => {
+      try {
+        return JSON.parse(localStorage.getItem(storageKey)) || { count: 10, timers: [] };
+      } catch {
+        return { count: 10, timers: [] };
+      }
+    };
+
+    class Timer {
+      constructor(card, data = {}) {
+        this.card = card;
+        this.display = $('.timer-display', card);
+        this.number = $('.number', card);
+        this.name = $('.name', card);
+        this.year = $('.year', card);
+        this.ageClass = $('.age-class', card);
+        this.elapsed = Number.isFinite(data.elapsed) && data.elapsed >= 0 ? data.elapsed : 0;
+        this.startedAt = null;
+        this.frame = null;
+        this.status = statuses.has(data.status) ? data.status : 'Bereit';
+
+        this.number.value = data.number || '';
+        this.name.value = data.name || '';
+        this.year.value = data.year || '';
+        this.ageClass.value = data.ageClass || '';
+
+        $('.start', card).onclick = () => this.startedAt === null ? this.start() : this.stop();
+        $('.reset', card).onclick = () => this.reset();
+        this.display.onchange = () => this.setManualTime();
+        [this.number, this.name, this.year, this.ageClass].forEach(input => input.oninput = save);
+
+        this.render();
+        if (this.status === 'Läuft') this.run();
+        else if (this.status === 'Pausiert') this.setPausedAppearance();
+      }
+
+      run() {
+        this.startedAt = performance.now() - this.elapsed;
+        this.card.classList.add('running');
+        $('.start', this.card).textContent = 'Stopp';
+        this.status = 'Läuft';
+        this.tick();
+      }
+
+      start() { this.run(); save(); }
+
+      setPausedAppearance() {
+        this.card.classList.remove('running');
+        $('.start', this.card).textContent = 'Start';
+        this.status = 'Pausiert';
+      }
+
+      stop() {
+        this.elapsed = performance.now() - this.startedAt;
+        this.startedAt = null;
+        cancelAnimationFrame(this.frame);
+        this.setPausedAppearance();
+        this.render();
+        save();
+      }
+
+      reset() {
+        this.elapsed = 0;
+        this.startedAt = null;
+        cancelAnimationFrame(this.frame);
+        this.card.classList.remove('running');
+        $('.start', this.card).textContent = 'Start';
+        this.status = 'Bereit';
+        this.render();
+        save();
+      }
+
+      tick() {
+        this.elapsed = performance.now() - this.startedAt;
+        this.render();
+        this.frame = requestAnimationFrame(() => this.tick());
+      }
+
+      render() { this.display.value = formatTime(this.elapsed); }
+
+      setManualTime() {
+        const milliseconds = parseTime(this.display.value);
+        if (milliseconds === null) {
+          this.display.setCustomValidity('Bitte HH:MM:SS.m eingeben.');
+          this.display.reportValidity();
+          this.render();
+          return;
+        }
+        this.display.setCustomValidity('');
+        this.elapsed = milliseconds;
+        if (this.startedAt !== null) this.startedAt = performance.now() - milliseconds;
+        this.render();
+        save();
+      }
+
+      state() {
+        return {
+          number: this.number.value,
+          name: this.name.value,
+          year: this.year.value,
+          ageClass: this.ageClass.value,
+          elapsed: this.startedAt === null ? this.elapsed : performance.now() - this.startedAt,
+          status: this.status
+        };
+      }
+
+      dispose() { cancelAnimationFrame(this.frame); }
+    }
+
+    function createTimers(amount, data = []) {
+      timers.forEach(timer => timer.dispose());
+      grid.replaceChildren();
+      for (let index = 0; index < amount; index += 1) grid.append(template.content.cloneNode(true));
+      timers = [...grid.children].map((card, index) => new Timer(card, data[index]));
+      save();
+    }
+
+    countInput.onchange = () => {
+      const amount = Math.max(1, Math.min(50, Number(countInput.value) || 10));
+      countInput.value = amount;
+      createTimers(amount, timers.map(timer => timer.state()));
+    };
+
+    $('#reset-times').onclick = () => timers.forEach(timer => timer.reset());
+    $('#reset-all').onclick = () => {
+      timers.forEach(timer => {
+        timer.reset();
+        timer.number.value = timer.name.value = timer.year.value = timer.ageClass.value = '';
+      });
+      save();
+    };
+    window.addEventListener('pagehide', save);
+
+    const escapeCsv = value => `"${String(value).replaceAll('"', '""')}"`;
+    $('#export').onclick = async () => {
+      const rows = [
+        ['Timeranzahl', timers.length],
+        ['Startnummer', 'Name', 'Jahrgang', 'Altersklasse', 'Zeit', 'Status'],
+        ...timers.map(timer => {
+          const state = timer.state();
+          return [state.number, state.name, state.year, state.ageClass, formatTime(state.elapsed), state.status];
+        })
+      ];
+      const csv = `\uFEFF${rows.map(row => row.map(escapeCsv).join(';')).join('\r\n')}`;
+
+      if ('showSaveFilePicker' in window) {
+        try {
+          const file = await window.showSaveFilePicker({
+            suggestedName: 'mtb-rennen-ergebnisse.csv',
+            types: [{ description: 'CSV-Datei', accept: { 'text/csv': ['.csv'] } }]
+          });
+          const writer = await file.createWritable();
+          await writer.write(csv);
+          await writer.close();
+          return;
+        } catch (error) {
+          if (error.name === 'AbortError') return;
+        }
+      }
+
+      const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'mtb-rennen-ergebnisse.csv';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    };
+
+    function parseCsv(text) {
+      const separator = text.includes(';') ? ';' : ',';
+      const rows = [];
+      let row = [], value = '', quoted = false;
+      for (let index = 0; index < text.length; index += 1) {
+        const character = text[index];
+        if (character === '"') {
+          if (quoted && text[index + 1] === '"') { value += '"'; index += 1; }
+          else quoted = !quoted;
+        } else if (character === separator && !quoted) {
+          row.push(value); value = '';
+        } else if ((character === '\n' || character === '\r') && !quoted) {
+          if (character === '\r' && text[index + 1] === '\n') index += 1;
+          row.push(value);
+          if (row.some(cell => cell !== '')) rows.push(row);
+          row = []; value = '';
+        } else value += character;
+      }
+      row.push(value);
+      if (row.some(cell => cell !== '')) rows.push(row);
+      return rows;
+    }
+
+    $('#import').onclick = () => $('#csv-file').click();
+    $('#csv-file').onchange = async event => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const rows = parseCsv(await file.text());
+      const amount = Math.max(1, Math.min(50, Number(rows[0]?.[1]) || rows.length - 2));
+      const data = rows.slice(2, 2 + amount).map(row => ({
+        number: row[0]?.trim(), name: row[1]?.trim(), year: row[2]?.trim(), ageClass: row[3]?.trim(),
+        elapsed: parseTime(row[4] || '', true) || 0,
+        status: statuses.has(row[5]?.trim()) ? row[5].trim() : 'Bereit'
+      }));
+      while (data.length < amount) data.push({});
+      countInput.value = amount;
+      createTimers(amount, data);
+      event.target.value = '';
+    };
+
+    const themeToggle = $('#theme-toggle');
+    const setTheme = dark => {
+      document.body.classList.toggle('light', !dark);
+      themeToggle.textContent = dark ? 'Hellen Modus aktivieren' : 'Dunklen Modus aktivieren';
+      themeToggle.setAttribute('aria-pressed', String(!dark));
+      localStorage.setItem(themeKey, dark ? 'dark' : 'light');
+    };
+    setTheme(localStorage.getItem(themeKey) !== 'light');
+    themeToggle.onclick = () => setTheme(document.body.classList.contains('light'));
+
+    const initial = load();
+    const initialCount = Math.max(1, Math.min(50, Number(initial.count) || 10));
+    countInput.value = initialCount;
+    createTimers(initialCount, Array.isArray(initial.timers) ? initial.timers : []);
+  </script>
+</body>
+</html>
